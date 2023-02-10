@@ -1,22 +1,22 @@
-from gf import *
+from galois_field import *
 
 class ReedSolomonError(Exception):
     pass
 
 def make_field(prim, c_exp):
-    global gf_log, gf_exp, field_char
-    gf_log, gf_exp, field_char = init_tables(prim, c_exp)
+    global galois_field_log, galois_field_exp, field_char
+    galois_field_log, galois_field_exp, field_char = init_tables(prim, c_exp)
 
 def rs_find_error_evaluator(synd, err_loc, nsym):
     #Compute the error evaluator polynomial Omega
-    _, remainder = gf_poly_div( gf_poly_mul(synd, err_loc), ([1] + [0]*(nsym + 1)) ) # Omega(x) = [ Synd(x) * Error_loc(x) ] mod x^(n-k+1)
+    _, remainder = galois_field_poly_div( galois_field_poly_mul(synd, err_loc), ([1] + [0]*(nsym + 1)) ) # Omega(x) = [ Synd(x) * Error_loc(x) ] mod x^(n-k+1)
     return remainder
 
 def rs_calc_syndromes(msg, nsym, fcr):
     #Computes the syndromes polynomial
     synd = [0] * nsym
     for i in range(0, nsym):
-        synd[i] = gf_poly_eval(msg, gf_pow(2,i+fcr))
+        synd[i] = galois_field_poly_eval(msg, galois_field_pow(2,i+fcr))
     return [0] + synd # tu thap den cao
 
 def rs_find_error_locator(synd, nsym):
@@ -29,16 +29,16 @@ def rs_find_error_locator(synd, nsym):
         # Compute delta
         delta = synd[r]
         for j in  range(1, len(err_loc)):
-            delta = gf_sub( delta, gf_mul(err_loc[-(j+1)], synd[r-j]))
+            delta = galois_field_sub( delta, galois_field_mul(err_loc[-(j+1)], synd[r-j]))
         
         auxi_poly += [0]
 
         if delta != 0:
             old_err_loc = err_loc
-            err_loc = gf_poly_add(err_loc, gf_poly_scale(auxi_poly, delta))
+            err_loc = galois_field_poly_add(err_loc, galois_field_poly_scale(auxi_poly, delta))
             if (2*L <= r-1):
                 L = r - L
-                auxi_poly = gf_poly_scale(old_err_loc, gf_inverse(delta))
+                auxi_poly = galois_field_poly_scale(old_err_loc, galois_field_inverse(delta))
     errs = len(err_loc) - 1
     if errs * 2 > nsym:
         raise ReedSolomonError("Too many errors when compute error locator polynomial!")
@@ -48,7 +48,7 @@ def rs_find_errors(err_loc, nmess): # nmess is len(msg_in)
     # Find the roots of error polynomial by Chien's search.
     err_pos = [] # error postions
     for i in range(nmess):
-        if gf_poly_eval(err_loc, gf_pow(2, i)) == 0: # if anpha^i is a root -->  err_pos = nmess - 1 - i
+        if galois_field_poly_eval(err_loc, galois_field_pow(2, i)) == 0: # if anpha^i is a root -->  err_pos = nmess - 1 - i
             err_pos.append(nmess - 1 - i)
     # Check the number of errors positions
     if len(err_pos) != len(err_loc) - 1:
@@ -66,29 +66,29 @@ def rs_correct_error(msg_in, synd, err_loc, err_pos, fcr):
     X = []
     roots = [len(msg_in) - 1 - pos for pos in err_pos]
     for i in roots:
-        X.append(gf_pow(2, i))
+        X.append(galois_field_pow(2, i))
 
     # Forney algorithm: compute the magnitudes
     E = [0] * (len(msg_in))
     for i, Xi in enumerate(X):
-        Xi_inv = gf_inverse(Xi)
+        Xi_inv = galois_field_inverse(Xi)
 
         # compute the denominator of the Forney's formula
         denominator = 1
         for j in range(len(X)):
             if j != i:
-                factor_j = gf_sub(1, gf_mul(Xi_inv, X[j]))
-                denominator = gf_mul(denominator, factor_j)
+                factor_j = galois_field_sub(1, galois_field_mul(Xi_inv, X[j]))
+                denominator = galois_field_mul(denominator, factor_j)
         # Check denominator == 0 ?
         if denominator == 0:
             raise ReedSolomonError("Could not find error magnitude!")
 
         # Compute the magnitude by the Forney's formula
-        magnitude = gf_poly_eval(err_eval_poly, Xi_inv)     # Omega at x = Xi inverse
-        magnitude = gf_mul(gf_pow(Xi, 1-fcr), magnitude)    
-        magnitude = gf_div(magnitude, denominator) # magnitude value of the error, calculated by the Forney algorithm
+        magnitude = galois_field_poly_eval(err_eval_poly, Xi_inv)     # Omega at x = Xi inverse
+        magnitude = galois_field_mul(galois_field_pow(Xi, 1-fcr), magnitude)    
+        magnitude = galois_field_div(magnitude, denominator) # magnitude value of the error, calculated by the Forney algorithm
         E[err_pos[i]] = magnitude
-    msg_in = gf_poly_add(msg_in, E)
+    msg_in = galois_field_poly_add(msg_in, E)
     return msg_in
 
 def rs_correct_msg(msg_in, nsym, fcr):
