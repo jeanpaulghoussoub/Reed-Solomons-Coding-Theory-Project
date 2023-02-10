@@ -8,8 +8,8 @@ from scipy.stats import norm
 from math import sqrt, log10
 from datetime import datetime
 
-def make_random_message(lenth, max_value):
-    msg = [0] * lenth
+def make_random_message(length, max_value):
+    msg = [0] * length
     for i in range(len(msg)):
         msg[i] = random.randint(1, max_value)
     return msg
